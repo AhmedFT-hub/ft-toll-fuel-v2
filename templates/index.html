@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toll Calculator</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logoFT.png') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <img src="{{ url_for('static', filename='logoFT.png') }}" alt="Logo" class="navbar-logo">
+        <div class="navbar-title">Toll & Fuel Tracker by Freight Tiger</div>
+    </nav>
+
+    <div id="validation-alert" class="alert">Please fill in all required fields</div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="tabs">
+                <div id="toll-tab" class="tab active">Toll</div>
+                <div id="fuel-tab" class="tab">Fuel</div>
+                <div id="bulk-tab" class="tab">Bulk Operations</div>
+            </div>
+            
+            <div id="toll-form">
+                <div class="form-group">
+                    <label for="origin">Origin</label>
+                    <input type="text" id="origin" placeholder="Enter starting location">
+                </div>
+                <div class="form-group">
+                    <label for="waypoints">Via Points</label>
+                    <div id="waypoints-container">
+                        
+                    </div>
+                    <button type="button" id="add-waypoint" class="waypoint-btn">
+                        <span class="material-icons">add</span>
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label for="destination">Destination</label>
+                    <input type="text" id="destination" placeholder="Enter destination">
+                </div>
+                <div class="form-group">
+                    <label for="journey-type">Vehicle Type</label>
+                    <select id="journey-type">
+                        <option value="4TO6AX_SJ">4 to 6 Axle Vehicle - Single Journey</option>
+                        <option value="4TO6AX_RJ">4 to 6 Axle Vehicle - Return Journey</option>
+                        <option value="4TO6AX_MP">4 to 6 Axle Vehicle - Monthly Journey</option>
+                        <option value="HCM_EME_SJ">HCM/EME Vehicle - Single Journey</option>
+                        <option value="HCM_EME_RJ">HCM/EME Vehicle - Return Journey</option>
+                        <option value="HCM_EME_MP">HCM/EME Vehicle - Monthly Journey</option>
+                        <option value="7AX_SJ">7 or More Axle Vehicle - Single Journey</option>
+                        <option value="7AX_RJ">7 or More Axle Vehicle - Return Journey</option>
+                        <option value="7AX_MP">7 or More Axle Vehicle - Monthly Journey</option>
+                    </select>
+                </div>
+                <button id="search-button" class="primary-button" type="button">Calculate Toll</button>
+            </div>
+
+            <div id="fuel-form">
+                <div class="form-group">
+                    <div class="toggle-container">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="coordinates-toggle">
+                            <span class="toggle-text">Use Coordinates</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="location-input" class="form-group">
+                    <label for="fuel-location">Location</label>
+                    <input type="text" id="fuel-location" placeholder="Enter location">
+                </div>
+                
+                <div id="coordinates-input" class="form-group" style="display: none;">
+                    <div class="coordinates-container">
+                        <div class="coordinate-input">
+                            <label for="fuel-lat">Latitude</label>
+                            <input type="number" id="fuel-lat" step="any" placeholder="Enter latitude">
+                        </div>
+                        <div class="coordinate-input">
+                            <label for="fuel-lng">Longitude</label>
+                            <input type="number" id="fuel-lng" step="any" placeholder="Enter longitude">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="fuel-type">Fuel Type</label>
+                    <select id="fuel-type">
+                        <option value="petrol">Petrol</option>
+                        <option value="diesel">Diesel</option>
+                    </select>
+                </div>
+                <button id="fuel-search-button" class="primary-button" type="button">Get Fuel Price</button>
+            </div>
+
+            <div id="bulk-form" style="display: none;">
+                <div id="bulk-password-section">
+                    <div class="password-container">
+                        <div class="lock-icon">
+                            <span class="material-icons">lock</span>
+                        </div>
+                        <h3 class="section-title">Secure Access Required</h3>
+                        <p class="section-description">Enter password to access bulk toll calculation</p>
+                        <div class="form-group">
+                            <div class="password-input-group">
+                                <input type="password" id="bulk-password" placeholder="Enter password" autocomplete="off">
+                                <button type="button" class="toggle-password">
+                                    <span class="material-icons">visibility_off</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button id="verify-password" class="primary-button" type="button">Verify Access</button>
+                    </div>
+                </div>
+
+                <div id="bulk-options" style="display: none;">
+                    <div class="bulk-header">
+                        <h3 class="section-title">Bulk Toll Calculator</h3>
+                    </div>
+
+                    <div class="upload-container">
+                        <div class="dropzone" id="file-dropzone">
+                            <input type="file" id="bulk-file" accept=".csv" class="file-input" hidden>
+                            <div class="dropzone-content">
+                                <span class="material-icons">upload_file</span>
+                                <p>Drag and drop your CSV file here</p>
+                                <p class="dropzone-subtitle">or</p>
+                                <button type="button" class="secondary-button" id="browse-files">Browse Files</button>
+                            </div>
+                            <div class="file-info" style="display: none;">
+                                <span class="material-icons">description</span>
+                                <span class="file-name"></span>
+                                <button type="button" class="remove-file">
+                                    <span class="material-icons">close</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="validation-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                        <p class="progress-text">Validating file...</p>
+                    </div>
+
+                    <div class="processing-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                        <p class="progress-text">Processing records: <span class="progress-count">0/0</span></p>
+                    </div>
+
+                    <button id="process-bulk" class="primary-button" type="button" disabled>Process Toll Charges</button>
+
+                    <div class="download-results">
+                        <h4>
+                            <span class="material-icons">task_alt</span>
+                            Processing Complete
+                        </h4>
+                        <p>Your toll charges have been calculated. Click below to download the results.</p>
+                        <button type="button" class="download-button" id="download-results">
+                            <span class="material-icons">download</span>
+                            Download Results
+                        </button>
+                    </div>
+
+                    <div class="instructions-section">
+                        <div class="divider"></div>
+                        <h4>How to Use Bulk Processing</h4>
+                        <ol class="instructions-list">
+                            <li>Download our <a href="/static/sample/toll_calculator_template.csv" class="sample-link">sample CSV template</a></li>
+                            <li>Your CSV file must include these columns:
+                                <ul>
+                                    <li><code>origin</code> - Starting point (city name or coordinates)</li>
+                                    <li><code>destination</code> - End point (city name or coordinates)</li>
+                                    <li><code>way_points</code> - At least one via point required (comma-separated)</li>
+                                    <li><code>journey_type</code> - Type of journey (see below)</li>
+                                </ul>
+                            </li>
+                            <li>Supported formats:
+                                <ul>
+                                    <li>City names: <code>Mumbai</code>, <code>Delhi</code></li>
+                                    <li>Coordinates: <code>19.0760,72.8777</code> (latitude,longitude)</li>
+                                    <li>Multiple via points: <code>Pune, Nashik</code> or <code>18.5204,73.8567, 19.9975,73.7898</code></li>
+                                </ul>
+                            </li>
+                            <li>Journey types:
+                                <ul>
+                                    <li><code>4TO6AX_SJ/RJ/MP</code> - 4 to 6 Axle Vehicle (Single/Return/Monthly)</li>
+                                    <li><code>7AX_SJ/RJ/MP</code> - 7 or More Axle Vehicle (Single/Return/Monthly)</li>
+                                    <li><code>HCM_EME_SJ/RJ/MP</code> - HCM/EME Vehicle (Single/Return/Monthly)</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-section">
+            <div id="map"></div>
+            <div class="toll-info">
+                <h3 id="info-title">Toll Information</h3>
+                <p id="toll-count-label">Total Toll Booths: <span id="total-tolls">0</span></p>
+                <p id="price-label">Total Price: <span id="total-price" class="total-price">₹0</span></p>
+            </div>
+            <div class="fuel-price-info">
+                <div class="fuel-details">
+                    <div class="fuel-location"></div>
+                    <div class="fuel-type"></div>
+                    <div class="fuel-price"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 
